@@ -20,7 +20,7 @@ func main() {
 	if err := generator.CreateCouriers(); err != nil {
 		panic(err)
 	}
-	fmt.Printf("%d couriers created!", *numCourier)
+	fmt.Printf("%d couriers created!\n", *numCourier)
 	fmt.Println("Starting update locations...")
 	ch := generator.UpdateWithInterval(time.Duration(*interval)*time.Second, time.Duration(*throttle)*time.Millisecond)
 	err := <-ch

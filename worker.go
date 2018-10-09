@@ -13,6 +13,13 @@ import (
 	"time"
 )
 
+const (
+	moscowMinLat = 37.3468
+	moscowMinLon = 55.5593
+	moscowMaxLat = 37.8961
+	moscowMaxLon = 55.9146
+)
+
 type Worker struct {
 	URL      string
 	courier  *Courier
@@ -75,7 +82,7 @@ func (w *Worker) UpdateLocation(interval time.Duration, errchan chan<- error) {
 }
 
 func (w *Worker) update() error {
-	w.courier.Location = diffLocation(w.courier.Location)
+	w.courier.Location = diffLocation(w.courier.Location, moscowMinLat, moscowMinLon, moscowMaxLat, moscowMaxLon)
 	body, err := json.Marshal(w.courier)
 	if err != nil {
 		return err
@@ -88,11 +95,11 @@ func (w *Worker) update() error {
 	return nil
 }
 
-func diffLocation(prevLocation *Location) *Location {
+func diffLocation(prevLocation *Location, minLat, minLon, maxLat, maxLon float64) *Location {
 	if prevLocation == nil {
 		return &Location{&GeoPoint{
-			Lat: trim(-90.0+rand.Float64()*180.0, 4),
-			Lon: trim(-180.0+rand.Float64()*360.0, 4),
+			Lat: trim(minLat+rand.Float64()*(maxLat-minLat), 4),
+			Lon: trim(minLon+rand.Float64()*(maxLon-minLon), 4),
 		}}
 	}
 	dlat, dlon := trim(-0.0005+rand.Float64()*0.001, 4), trim(-0.0005+rand.Float64()*0.001, 4)
