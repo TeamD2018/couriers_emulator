@@ -75,9 +75,8 @@ func (w *Worker) UpdateLocation(interval time.Duration, errchan chan<- error) {
 }
 
 func (w *Worker) update() error {
-	courier := &Courier{}
-	courier.Location = diffLocation(courier.Location)
-	body, err := json.Marshal(courier)
+	w.courier.Location = diffLocation(w.courier.Location)
+	body, err := json.Marshal(w.courier)
 	if err != nil {
 		return err
 	}
