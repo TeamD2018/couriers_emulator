@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	moscowMinLat = 37.3468
-	moscowMinLon = 55.5593
-	moscowMaxLat = 37.8961
-	moscowMaxLon = 55.9146
+	moscowMinLat = 55.5593
+	moscowMinLon = 37.3468
+	moscowMaxLat = 55.9146
+	moscowMaxLon = 37.8961
 )
 
 type Worker struct {
