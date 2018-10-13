@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/icrowley/fake"
 	"io/ioutil"
@@ -69,6 +71,21 @@ func (w *Worker) CreateCourier() error {
 	return nil
 }
 
+func (w* Worker) DeleteCourier() error {
+	req, err := http.NewRequest(http.MethodDelete, w.buildURLDelete(w.URL), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := w.client.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return errors.New(fmt.Sprintf("Not valid status code: expected 204, but %d", resp.StatusCode))
+	}
+	return nil
+}
+
 func (w *Worker) buildURLCreate(base string) string {
 	return fmt.Sprintf("%s%s", base, "/couriers")
 }
@@ -77,13 +94,23 @@ func (w *Worker) buildURLUpdate(base string) string {
 	return fmt.Sprintf("%s%s%s", base, "/couriers/", w.courier.ID)
 }
 
-func (w *Worker) UpdateLocation(interval time.Duration, errchan chan<- error) {
+
+func (w *Worker) buildURLDelete(base string) string {
+	return fmt.Sprintf("%s%s%s", base, "/couriers/", w.courier.ID)
+}
+
+func (w *Worker) UpdateLocation(interval time.Duration, ctx context.Context, errchan chan<- error) {
 	w.Interval = interval
 	for {
 		//garbage collector sucks
-		<-time.After(w.Interval)
-		if err := w.update(); err != nil {
-			errchan <- err
+		select {
+		case <-time.After(w.Interval):
+			if err := w.update(); err != nil {
+				errchan <- err
+			}
+		case <-ctx.Done():
+			errchan <- nil
+			return
 		}
 	}
 }

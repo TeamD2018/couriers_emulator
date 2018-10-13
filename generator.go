@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Generator struct {
 	Workers []*Worker
@@ -23,11 +26,20 @@ func (g *Generator) CreateCouriers() error {
 	return nil
 }
 
-func (g *Generator) UpdateWithInterval(interval time.Duration, throttle time.Duration) chan error {
+func (g *Generator) DeleteCouriers() error {
+	for _, w := range g.Workers {
+		if err := w.DeleteCourier(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g *Generator) UpdateWithInterval(interval time.Duration, throttle time.Duration, ctx context.Context) chan error {
 	errchan := make(chan error)
 	for _, w := range g.Workers {
 		time.Sleep(throttle)
-		go w.UpdateLocation(interval, errchan)
+		go w.UpdateLocation(interval, ctx, errchan)
 	}
 	return errchan
 }
