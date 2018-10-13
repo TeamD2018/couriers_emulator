@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	moscowMinLat = 55.5593
 	moscowMinLon = 37.3468
-	moscowMaxLat = 55.9146
+	moscowMinLat = 55.5593
 	moscowMaxLon = 37.8961
+	moscowMaxLat = 55.9146
 )
 
 type Worker struct {
@@ -56,6 +56,7 @@ func (w *Worker) CreateCourier() error {
 		return err
 	}
 	body, err := ioutil.ReadAll(response.Body)
+	defer response.Body.Close()
 	if err != nil {
 		log.Printf("%s", err)
 		return err
@@ -94,7 +95,8 @@ func (w *Worker) update() error {
 		return err
 	}
 	req, err := http.NewRequest(http.MethodPut, w.buildURLUpdate(w.URL), bytes.NewReader(body))
-	_, err = w.client.Do(req)
+	resp, err := w.client.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
@@ -126,7 +128,11 @@ func diffLocation(prevLocation *Location, minLat, minLon, maxLat, maxLon float64
 	return prevLocation
 }
 
-func trim(n float64, precision int) float64 {
-	intn := int(n * math.Pow10(precision))
-	return float64(intn) / math.Pow10(precision)
+func round(num float64) int {
+	return int(num + math.Copysign(0.5, num))
+}
+
+func trim(num float64, precision int) float64 {
+	output := math.Pow(10, float64(precision))
+	return float64(round(num*output)) / output
 }
