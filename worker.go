@@ -37,7 +37,13 @@ func NewWorker(url string) *Worker {
 }
 
 func (w *Worker) CreateCourier() error {
-	name := fake.MaleFullName()
+	err := fake.SetLang("ru")
+	if err != nil {
+		log.Printf("%s", err)
+		return err
+	}
+
+	name := fake.FullName()
 	phone := fake.Phone()
 	courier := Courier{
 		Name:  name,
