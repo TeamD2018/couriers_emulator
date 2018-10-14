@@ -25,6 +25,9 @@ func main() {
 	if err := generator.CreateCouriers(); err != nil {
 		panic(err)
 	}
+	if err := generator.CreateOrders(); err != nil {
+		panic(err)
+	}
 	signalChan := make(chan os.Signal, 1)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(*timeout))
 	doneGraceful := make(chan struct{})

@@ -26,6 +26,15 @@ func (g *Generator) CreateCouriers() error {
 	return nil
 }
 
+func (g* Generator) CreateOrders() error {
+	for _, w := range g.Workers {
+		if err := w.CreateOrder(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (g *Generator) DeleteCouriers() error {
 	for _, w := range g.Workers {
 		if err := w.DeleteCourier(); err != nil {

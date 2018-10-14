@@ -71,7 +71,26 @@ func (w *Worker) CreateCourier() error {
 	return nil
 }
 
-func (w* Worker) DeleteCourier() error {
+func (w *Worker) CreateOrder() error {
+	order := Order{
+		Source: Location{
+			Point: &GeoPoint{
+				Lat: 1.0,
+				Lon: 1.0,
+			},
+		},
+	}
+	res, _ := json.Marshal(order)
+	response, err := http.Post(w.buildURLCreateOrder(w.URL), "application/json", bytes.NewReader(res))
+	if err != nil {
+		log.Printf("%s", err)
+		return err
+	}
+	defer response.Body.Close()
+	return nil
+}
+
+func (w *Worker) DeleteCourier() error {
 	req, err := http.NewRequest(http.MethodDelete, w.buildURLDelete(w.URL), nil)
 	if err != nil {
 		return err
@@ -90,10 +109,13 @@ func (w *Worker) buildURLCreate(base string) string {
 	return fmt.Sprintf("%s%s", base, "/couriers")
 }
 
+func (w *Worker) buildURLCreateOrder(base string) string {
+	return fmt.Sprintf("%s/couriers/%s/orders", base, w.courier.ID)
+}
+
 func (w *Worker) buildURLUpdate(base string) string {
 	return fmt.Sprintf("%s%s%s", base, "/couriers/", w.courier.ID)
 }
-
 
 func (w *Worker) buildURLDelete(base string) string {
 	return fmt.Sprintf("%s%s%s", base, "/couriers/", w.courier.ID)
