@@ -72,11 +72,19 @@ func (w *Worker) CreateCourier() error {
 }
 
 func (w *Worker) CreateOrder() error {
+	locationSrc := diffLocation(nil, moscowMinLat, moscowMinLon, moscowMaxLat, moscowMaxLon)
+	locationDest := diffLocation(nil, moscowMinLat, moscowMinLon, moscowMaxLat, moscowMaxLon)
 	order := Order{
 		Source: Location{
 			Point: &GeoPoint{
-				Lat: 1.0,
-				Lon: 1.0,
+				Lat: locationSrc.Point.Lat,
+				Lon: locationSrc.Point.Lon,
+			},
+		},
+		Destination: Location{
+			Point: &GeoPoint{
+				Lat:locationDest.Point.Lat,
+				Lon:locationDest.Point.Lon,
 			},
 		},
 	}
