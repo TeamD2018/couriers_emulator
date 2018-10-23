@@ -25,9 +25,11 @@ func main() {
 	if err := generator.CreateCouriers(); err != nil {
 		panic(err)
 	}
+	fmt.Printf("%d couriers created!\n", *numCourier)
 	if err := generator.CreateOrders(); err != nil {
 		panic(err)
 	}
+	fmt.Println("Orders created!")
 	signalChan := make(chan os.Signal, 1)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(*timeout))
 	doneGraceful := make(chan struct{})
@@ -41,15 +43,10 @@ func main() {
 		case <-signalChan:
 			cancel()
 			fmt.Println("\nDeleting couriers...")
-			if err := generator.DeleteCouriers(); err != nil {
-				os.Exit(1)
-			}
-			os.Exit(0)
 		case <-ch:
 			return
 		}
 	}(doneGraceful)
-	fmt.Printf("%d couriers created!\n", *numCourier)
 	fmt.Println("Starting update locations...")
 
 	ch := generator.UpdateWithInterval(
@@ -57,14 +54,12 @@ func main() {
 		time.Duration(*throttle)*time.Millisecond,
 		ctx)
 	if err := <-ch; err != nil {
-		generator.DeleteCouriers()
+		close(ch)
 		log.Println(err)
-	} else {
-		fmt.Println("\nDeleting couriers...")
-		if err := generator.DeleteCouriers(); err != nil {
-			doneGraceful <- struct{}{}
-			os.Exit(1)
-		}
-		doneGraceful <- struct{}{}
 	}
+	fmt.Println("\nDeleting couriers...")
+	if err := generator.DeleteCouriers(); err != nil {
+		log.Println(err)
+	}
+	doneGraceful <- struct{}{}
 }

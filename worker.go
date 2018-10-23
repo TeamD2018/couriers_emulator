@@ -145,10 +145,10 @@ func (w *Worker) update() error {
 	}
 	req, err := http.NewRequest(http.MethodPut, w.buildURLUpdate(w.URL), bytes.NewReader(body))
 	resp, err := w.client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	return nil
 }
 
