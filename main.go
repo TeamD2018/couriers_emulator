@@ -100,6 +100,7 @@ func graceful(signalChan chan os.Signal, cancel context.CancelFunc, cancelChan c
 				log.Println(err)
 			}
 			doneChan <- struct{}{}
+			return
 		case <-cancelChan:
 			return
 		}
