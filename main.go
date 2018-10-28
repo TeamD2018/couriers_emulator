@@ -48,6 +48,7 @@ func main() {
 		api := NewAPIService()
 		router.POST("/test_data", api.GenerateTestData)
 		router.DELETE("/test_data", api.DeleteCouriers)
+		router.StaticFile("/", "./web.html")
 		if err := router.Run(*url); err != nil {
 			return
 		}
@@ -57,7 +58,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("%d couriers created!\n", *numCourier)
-	if err := generator.CreateOrders(*routesURL, int(rand.Int31n(int32(*ordersPerCourier)))); err != nil {
+	if err := generator.CreateOrders(*routesURL, rand.Intn(*ordersPerCourier)+1); err != nil {
 		panic(err)
 	}
 

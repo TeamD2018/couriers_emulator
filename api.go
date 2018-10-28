@@ -24,6 +24,7 @@ func NewAPIService() *APIService {
 
 func (api *APIService) DeleteCouriers(ctx *gin.Context) {
 	api.cancel()
+	api.cancel = nil
 	api.wg.Wait()
 	if err := api.generator.DeleteCouriers(); err != nil {
 		log.Println(err)
@@ -35,6 +36,7 @@ func (api *APIService) DeleteCouriers(ctx *gin.Context) {
 func (api *APIService) GenerateTestData(ctx *gin.Context) {
 	if api.cancel != nil {
 		api.cancel()
+		api.cancel = nil
 		api.wg.Wait()
 		if err := api.generator.DeleteCouriers(); err != nil {
 			log.Println(err)
@@ -56,12 +58,11 @@ func (api *APIService) GenerateTestData(ctx *gin.Context) {
 
 	log.Printf("%d couriers created!\n", *numCourier)
 
-	if err := api.generator.CreateOrders(*routesURL, int(rand.Int31n(int32(*ordersPerCourier)))); err != nil {
+	if err := api.generator.CreateOrders(*routesURL, rand.Intn(*ordersPerCourier)+1); err != nil {
 		log.Println(err)
 	}
 
 	log.Printf("%d orders created (%d order for courier)\n", *numCourier*(*ordersPerCourier), *ordersPerCourier)
-
 
 	log.Println("Starting update locations...")
 

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Courier Emulator</title>
+    <style>
+        button {
+            border: 2px solid yellow;
+            color: white;
+            background-color: black;
+            font-size: 30px;
+        }
+
+        button:hover {
+            border: 2px solid yellow;
+            color: yellow;
+            background-color: black;
+            font-size: 30px;
+        }
+    </style>
+</head>
+
+<body>
+<button onclick="onClick(this)" id="generate_btn">Generate Test Data</button>
+<button onclick="onClick(this)" id="delete_btn">Delete Test Data</button>
+</body>
+<script>
+    function onClick(x) {
+        let http = new XMLHttpRequest();
+        let url = '/test_data';
+        http.open('POST', url, true);
+        http.onreadystatechange = function() {
+            if(http.readyState == 4 && http.status == 200) {
+                alert(http.status);
+            }
+        };
+        if (x.id === 'generate_btn') {
+            http.open('POST', url, true);
+            http.send();
+        }
+        if (x.id === 'delete_btn') {
+            http.open('DELETE', url, true);
+            http.send();
+        }
+    }
+</script>
+</html>
