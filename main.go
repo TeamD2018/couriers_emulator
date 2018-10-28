@@ -2,64 +2,106 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/pflag"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
 
 var (
-	numCourier = flag.Int("couriers", 10, "Number of couriers to be created")
-	timeout    = flag.Int("timeout", 60, "")
-	url        = flag.String("url", "http://localhost:2015", "")
-	interval   = flag.Int("interval", 5, "interval of update geoposition by courier")
-	throttle   = flag.Int("throttle", 500, "throttle")
+	numCourier       *int
+	timeout          *int64
+	backend          *string
+	url              *string
+	interval         *int
+	lag              *int
+	ordersPerCourier *int
+	routesURL        *string
+	speed            *int
+	mode             *string
 )
 
+func init() {
+	numCourier = pflag.IntP("couriers", "c", 10, "number of couriers to be created")
+	timeout = pflag.Int64P("timeout", "t", 60, "timeout for emulate courier activity")
+	backend = pflag.StringP("backend", "b", "http://localhost:2015", "backend url")
+	url = pflag.StringP("url", "u", "localhost:2018", "url of service emulator")
+	interval = pflag.IntP("interval", "i", 5, "interval (in seconds) that couriers update geoposition")
+	lag = pflag.IntP("lag", "l", 100, "lag (in milliseconds) that couriers update geoposition")
+	ordersPerCourier = pflag.IntP("orders", "o", 1, "number of orders that can be affiliate to one courier")
+	routesURL = pflag.StringP("routes", "r", "http://localhost:5000", "url for routes backend")
+	speed = pflag.IntP("speed", "s", 1, "how fast the couriers traffic")
+	mode = pflag.StringP("mode", "m", "s", "mode of emulator (c - console, s - server)")
+	pflag.Parse()
+	rand.Seed(time.Now().UTC().UnixNano())
+}
+
 func main() {
-	flag.Parse()
-	generator := NewGenerator(*url, *numCourier)
+	if *mode == "s" {
+		router := gin.Default()
+		api := NewAPIService()
+		router.POST("/test_data", api.GenerateTestData)
+		router.DELETE("/test_data", api.DeleteCouriers)
+		if err := router.Run(*url); err != nil {
+			return
+		}
+	}
+	generator := NewGenerator(*backend, *numCourier)
 	if err := generator.CreateCouriers(); err != nil {
 		panic(err)
 	}
 	fmt.Printf("%d couriers created!\n", *numCourier)
-	if err := generator.CreateOrders(); err != nil {
+	if err := generator.CreateOrders(*routesURL, *ordersPerCourier); err != nil {
 		panic(err)
 	}
-	fmt.Println("Orders created!")
-	signalChan := make(chan os.Signal, 1)
+
+	fmt.Printf("%d orders created (%d order for courier)\n", *numCourier*(*ordersPerCourier), *ordersPerCourier)
+
+	doneChan, cancelChan, signalChan := make(chan struct{}), make(chan struct{}), make(chan os.Signal, 1)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(*timeout))
-	doneGraceful := make(chan struct{})
-	go func(ch chan struct{}) {
-		signal.Notify(signalChan,
-			syscall.SIGHUP,
-			syscall.SIGINT,
-			syscall.SIGTERM,
-			syscall.SIGQUIT)
+
+	go graceful(signalChan, cancel, cancelChan, doneChan, generator)
+
+	fmt.Println("Starting update locations...")
+
+	wg := &sync.WaitGroup{}
+
+	generator.UpdateWithInterval(
+		wg,
+		*routesURL,
+		*speed,
+		time.Duration(*interval)*time.Second,
+		time.Duration(*lag)*time.Millisecond,
+		ctx)
+	wg.Wait()
+	signalChan <- syscall.SIGINT
+	<-doneChan
+}
+
+func graceful(signalChan chan os.Signal, cancel context.CancelFunc, cancelChan chan struct{}, doneChan chan struct{}, generator *Generator) {
+	signal.Notify(signalChan,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	for {
 		select {
 		case <-signalChan:
 			cancel()
 			fmt.Println("\nDeleting couriers...")
-		case <-ch:
+			if err := generator.DeleteCouriers(); err != nil {
+				log.Println(err)
+			}
+			doneChan <- struct{}{}
+		case <-cancelChan:
 			return
 		}
-	}(doneGraceful)
-	fmt.Println("Starting update locations...")
-
-	ch := generator.UpdateWithInterval(
-		time.Duration(*interval)*time.Second,
-		time.Duration(*throttle)*time.Millisecond,
-		ctx)
-	if err := <-ch; err != nil {
-		close(ch)
-		log.Println(err)
 	}
-	fmt.Println("\nDeleting couriers...")
-	if err := generator.DeleteCouriers(); err != nil {
-		log.Println(err)
-	}
-	doneGraceful <- struct{}{}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sync"
 	"time"
 )
 
@@ -26,10 +27,12 @@ func (g *Generator) CreateCouriers() error {
 	return nil
 }
 
-func (g* Generator) CreateOrders() error {
+func (g *Generator) CreateOrders(routesURL string, numberOfOrders int) error {
 	for _, w := range g.Workers {
-		if err := w.CreateOrder(); err != nil {
-			return err
+		for i := 0; i < numberOfOrders; i++ {
+			if err := w.CreateOrder(routesURL); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -44,11 +47,10 @@ func (g *Generator) DeleteCouriers() error {
 	return nil
 }
 
-func (g *Generator) UpdateWithInterval(interval time.Duration, throttle time.Duration, ctx context.Context) chan error {
-	errchan := make(chan error)
+func (g *Generator) UpdateWithInterval(wg *sync.WaitGroup, routeURL string, speed int, interval, throttle time.Duration, ctx context.Context) {
 	for _, w := range g.Workers {
+		wg.Add(1)
+		go w.UpdateLocation(wg, speed, routeURL, interval, ctx)
 		time.Sleep(throttle)
-		go w.UpdateLocation(interval, ctx, errchan)
 	}
-	return errchan
 }

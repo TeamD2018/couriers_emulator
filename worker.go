@@ -12,6 +12,8 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,11 +24,36 @@ const (
 	moscowMaxLat = 55.9146
 )
 
+type Geometry struct {
+	Coordinates [][2]float64 `json:"coordinates"`
+}
+
+type Route struct {
+	Geometry *Geometry `json:"geometry"`
+	Legs     []*Leg    `json:"legs"`
+}
+
+type Annotation struct {
+	Duration []float32 `json:"duration"`
+}
+
+type Leg struct {
+	Annotation *Annotation `json:"annotation"`
+}
+
+type RouteResponse struct {
+	Routes []*Route `json:"routes"`
+}
+
 type Worker struct {
-	URL      string
-	courier  *Courier
-	Interval time.Duration
-	client   *http.Client
+	URL        string
+	courier    *Courier
+	orders     []*Order
+	locations  []*GeoPoint
+	durations  []float32
+	iloc, idur int
+	Interval   time.Duration
+	client     *http.Client
 }
 
 func NewWorker(url string) *Worker {
@@ -71,30 +98,41 @@ func (w *Worker) CreateCourier() error {
 	return nil
 }
 
-func (w *Worker) CreateOrder() error {
-	locationSrc := diffLocation(nil, moscowMinLat, moscowMinLon, moscowMaxLat, moscowMaxLon)
-	locationDest := diffLocation(nil, moscowMinLat, moscowMinLon, moscowMaxLat, moscowMaxLon)
-	order := Order{
-		Source: Location{
+func (w *Worker) CreateOrder(routesURL string) error {
+	locationSrc := w.getRandomLocation(moscowMinLat, moscowMaxLat, moscowMinLon, moscowMaxLon)
+	locationDest := w.getRandomLocation(moscowMinLat, moscowMaxLat, moscowMinLon, moscowMaxLon)
+
+	order := &Order{}
+
+	order.Destination = Location{
+		Point: &GeoPoint{
+			Lat: locationDest.Point.Lat,
+			Lon: locationDest.Point.Lon,
+		},
+	}
+
+	if w.orders == nil || len(w.orders) == 0 {
+		order.Source = Location{
 			Point: &GeoPoint{
 				Lat: locationSrc.Point.Lat,
 				Lon: locationSrc.Point.Lon,
 			},
-		},
-		Destination: Location{
-			Point: &GeoPoint{
-				Lat:locationDest.Point.Lat,
-				Lon:locationDest.Point.Lon,
-			},
-		},
+		}
+	} else {
+		order.Source = w.orders[0].Source
 	}
+	w.orders = append(w.orders, order)
+
 	res, _ := json.Marshal(order)
 	response, err := http.Post(w.buildURLCreateOrder(w.URL), "application/json", bytes.NewReader(res))
+
 	if err != nil {
 		log.Printf("%s", err)
 		return err
 	}
-	defer response.Body.Close()
+
+	response.Body.Close()
+
 	return nil
 }
 
@@ -125,28 +163,87 @@ func (w *Worker) buildURLUpdate(base string) string {
 	return fmt.Sprintf("%s%s%s", base, "/couriers/", w.courier.ID)
 }
 
+func (w *Worker) buildURLGetRoute(routesURL string, locations []*Location) string {
+	buf := strings.Builder{}
+	buf.WriteString(fmt.Sprintf("%s/route/v1/driving/", routesURL))
+	for i, l := range locations {
+		buf.WriteString(fmt.Sprintf("%f,%f", l.Point.Lon, l.Point.Lat))
+		if i != len(locations)-1 {
+			buf.WriteByte(';')
+		}
+	}
+	buf.WriteString("?geometries=geojson&annotations=duration&overview=full")
+	return buf.String()
+}
+
 func (w *Worker) buildURLDelete(base string) string {
 	return fmt.Sprintf("%s%s%s", base, "/couriers/", w.courier.ID)
 }
 
-func (w *Worker) UpdateLocation(interval time.Duration, ctx context.Context, errchan chan<- error) {
-	w.Interval = interval
+func (w *Worker) getRoute(routesURL string) error {
+	locations := make([]*Location, len(w.orders)+1)
+	locations[0] = &w.orders[0].Source
+	for i, o := range w.orders {
+		locations[i+1] = &o.Destination
+	}
+	buildStr := w.buildURLGetRoute(routesURL, locations)
+
+	fmt.Println(buildStr)
+
+	response, err := http.Get(buildStr)
+
+	if err != nil {
+		log.Printf("%s", err)
+		return err
+	}
+
+	b, _ := ioutil.ReadAll(response.Body)
+
+	resp := RouteResponse{}
+
+	err = json.Unmarshal(b, &resp)
+
+	if err != nil {
+		log.Printf("%s", b)
+		panic(err)
+	}
+
+	log.Printf("%s\n", b)
+
+	for _, r := range resp.Routes[0].Geometry.Coordinates {
+		point := GeoPoint{Lon: r[0], Lat: r[1]}
+		w.locations = append(w.locations, &point)
+	}
+
+	for _, r := range resp.Routes[0].Legs[0].Annotation.Duration {
+		w.durations = append(w.durations, r)
+	}
+	return nil
+}
+
+func (w *Worker) UpdateLocation(wg *sync.WaitGroup, speed int, routesURL string, interval time.Duration, ctx context.Context) {
+	w.getRoute(routesURL)
+	defer wg.Done()
+	timer := time.NewTimer(time.Millisecond)
 	for {
-		//garbage collector sucks
+		if w.idur == len(w.durations)-1 {
+			return
+		}
 		select {
-		case <-time.After(w.Interval):
+		case <-timer.C:
 			if err := w.update(); err != nil {
-				errchan <- err
+				return
 			}
+			timer.Reset(time.Duration((w.durations[w.idur]*1000)/float32(speed)) * time.Millisecond)
+			w.idur++
 		case <-ctx.Done():
-			errchan <- nil
 			return
 		}
 	}
 }
 
 func (w *Worker) update() error {
-	w.courier.Location = diffLocation(w.courier.Location, moscowMinLat, moscowMinLon, moscowMaxLat, moscowMaxLon)
+	w.courier.Location = w.getNextLocationFromRoute()
 	body, err := json.Marshal(w.courier)
 	if err != nil {
 		return err
@@ -160,29 +257,19 @@ func (w *Worker) update() error {
 	return nil
 }
 
-func diffLocation(prevLocation *Location, minLat, minLon, maxLat, maxLon float64) *Location {
-	if prevLocation == nil {
-		return &Location{&GeoPoint{
-			Lat: trim(minLat+rand.Float64()*(maxLat-minLat), 4),
-			Lon: trim(minLon+rand.Float64()*(maxLon-minLon), 4),
-		}}
+func (w *Worker) getNextLocationFromRoute() *Location {
+	dlat, dlon := w.locations[w.iloc].Lat, w.locations[w.iloc].Lon
+	if w.iloc < len(w.locations)-1 {
+		w.iloc += 1
 	}
-	dlat, dlon := trim(-0.0005+rand.Float64()*0.001, 4), trim(-0.0005+rand.Float64()*0.001, 4)
-	if dlat < -90.0 {
-		dlat = -90.0
-	}
-	if dlat > 90.0 {
-		dlat = 90
-	}
-	if dlon < -180.0 {
-		dlon = -180.0
-	}
-	if dlon > 180.0 {
-		dlon = 180.0
-	}
-	prevLocation.Point.Lat += dlat
-	prevLocation.Point.Lon += dlon
-	return prevLocation
+	return &Location{&GeoPoint{dlat, dlon}}
+}
+
+func (w *Worker) getRandomLocation(minLat, maxLat, minLon, maxLon float64) *Location {
+	return &Location{&GeoPoint{
+		Lat: trim(minLat+rand.Float64()*(maxLat-minLat), 4),
+		Lon: trim(minLon+rand.Float64()*(maxLon-minLon), 4),
+	}}
 }
 
 func round(num float64) int {
