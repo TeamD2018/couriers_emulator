@@ -157,7 +157,7 @@ func (w *Worker) CreateOrder(routesURL string) error {
 	locationDest := w.getRandomLocation(moscowMinLat, moscowMaxLat, moscowMinLon, moscowMaxLon)
 
 	order := &Order{}
-
+	order.OrderNumber = rand.Int() % 10000
 	if addrI < len(ConstantAddresses) {
 		order.Destination = Location{
 			Point: &GeoPoint{
