@@ -57,7 +57,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("%d couriers created!\n", *numCourier)
-	if err := generator.CreateOrders(*routesURL, *ordersPerCourier); err != nil {
+	if err := generator.CreateOrders(*routesURL, int(rand.Int31n(int32(*ordersPerCourier)))); err != nil {
 		panic(err)
 	}
 
@@ -95,12 +95,13 @@ func graceful(signalChan chan os.Signal, cancel context.CancelFunc, cancelChan c
 		select {
 		case <-signalChan:
 			cancel()
-			fmt.Println("\nDeleting couriers...")
+			fmt.Println("Deleting couriers...")
 			if err := generator.DeleteCouriers(); err != nil {
 				log.Println(err)
 			}
+			fmt.Println("Couriers deleted!")
 			doneChan <- struct{}{}
-			return
+			os.Exit(0)
 		case <-cancelChan:
 			return
 		}

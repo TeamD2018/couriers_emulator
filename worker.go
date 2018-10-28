@@ -24,6 +24,53 @@ const (
 	moscowMaxLat = 55.9146
 )
 
+var ConstantAddresses = []Location{
+	{
+		Point: &GeoPoint{
+			Lat: 55.797116,
+			Lon: 37.537862,
+		},
+	},
+	{
+		Point: &GeoPoint{
+			55.744584, 37.565937,
+		},
+	},
+	{
+		Point: &GeoPoint{
+			55.765906, 37.683876,
+		},
+	},
+	{
+		Point: &GeoPoint{
+			55.757219, 37.600293,
+		},
+	},
+	{
+		Point: &GeoPoint{
+			55.707944, 37.683233,
+		},
+	},
+}
+
+var ConstantCouriers = []Courier{
+	Courier{Name: "Иван Васильев", Phone: "79039992231"},
+	Courier{Name: "Герман Стерлигов", Phone: "88005553535"},
+	Courier{Name: "Мстистлав Зеркальный", Phone: "78961235566"},
+	Courier{Name: "Константин Константинопольский", Phone: "79000011010"},
+	Courier{Name: "Борис Седых", Phone: "71127764388"},
+	Courier{Name: "Гавриил Степанов", Phone: "79110234578"},
+	Courier{Name: "Марат Ежов", Phone: "79167562345"},
+	Courier{Name: "Самуил Остапенко", Phone: "79991112222"},
+	Courier{Name: "Фарид Рахманов", Phone: "79458765134"},
+	Courier{Name: "Аскольд Щичко", Phone: "79901123476"},
+}
+
+var (
+	addrI = 0
+	courI = 0
+)
+
 type Geometry struct {
 	Coordinates [][2]float64 `json:"coordinates"`
 }
@@ -54,6 +101,7 @@ type Worker struct {
 	iloc, idur int
 	Interval   time.Duration
 	client     *http.Client
+	addrI      int
 }
 
 func NewWorker(url string) *Worker {
@@ -74,9 +122,15 @@ func (w *Worker) CreateCourier() error {
 
 	name := fake.FullName()
 	phone := fake.Phone()
-	courier := Courier{
-		Name:  name,
-		Phone: &phone,
+	var courier Courier
+	if courI < len(ConstantCouriers) {
+		courier = ConstantCouriers[courI]
+		courI++
+	} else {
+		courier = Courier{
+			Name:  name,
+			Phone: phone,
+		}
 	}
 	res, _ := json.Marshal(courier)
 	response, err := http.Post(w.buildURLCreate(w.URL), "application/json", bytes.NewReader(res))
@@ -104,11 +158,21 @@ func (w *Worker) CreateOrder(routesURL string) error {
 
 	order := &Order{}
 
-	order.Destination = Location{
-		Point: &GeoPoint{
-			Lat: locationDest.Point.Lat,
-			Lon: locationDest.Point.Lon,
-		},
+	if addrI < len(ConstantAddresses) {
+		order.Destination = Location{
+			Point: &GeoPoint{
+				Lat: ConstantAddresses[addrI].Point.Lat,
+				Lon: ConstantAddresses[addrI].Point.Lon,
+			},
+		}
+		addrI++
+	} else {
+		order.Destination = Location{
+			Point: &GeoPoint{
+				Lat: locationDest.Point.Lat,
+				Lon: locationDest.Point.Lon,
+			},
+		}
 	}
 
 	if w.orders == nil || len(w.orders) == 0 {
