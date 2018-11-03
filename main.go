@@ -48,7 +48,7 @@ func main() {
 		api := NewAPIService()
 		router.POST("/test_data", api.GenerateTestData)
 		router.DELETE("/test_data", api.DeleteCouriers)
-		router.StaticFile("/", "./web.html")
+		router.GET("/", api.GetHTML)
 		if err := router.Run(*url); err != nil {
 			return
 		}

@@ -24,18 +24,26 @@ func NewAPIService() *APIService {
 }
 
 func (api *APIService) GetHTML(ctx *gin.Context) {
-	t, err := template.New("html").Parse("web.html")
+	t, err := template.New("web.html").ParseFiles("web.html")
 	if err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	if err := t.Execute(ctx.Writer, struct {
-		OrderID string
+
+	var r struct {
+		OrderID   string
 		CourierID string
-	}{
-		api.generator.Workers[0].orders[0].ID,
-		api.generator.Workers[0].courier.ID,
-	}); err != nil {
+	}
+
+	if api.generator == nil {
+		r.OrderID = "0"
+		r.CourierID = "0"
+	} else {
+		r.OrderID = api.generator.Workers[0].orders[0].ID
+		r.CourierID = api.generator.Workers[0].courier.ID
+	}
+
+	if err := t.Execute(ctx.Writer, r); err != nil {
 		log.Println(err)
 		ctx.Status(http.StatusInternalServerError)
 	}
