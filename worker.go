@@ -185,9 +185,9 @@ func (w *Worker) CreateOrder(routesURL string) error {
 	} else {
 		order.Source = w.orders[0].Source
 	}
-	w.orders = append(w.orders, order)
 
 	res, _ := json.Marshal(order)
+
 	response, err := http.Post(w.buildURLCreateOrder(w.URL), "application/json", bytes.NewReader(res))
 
 	if err != nil {
@@ -195,7 +195,19 @@ func (w *Worker) CreateOrder(routesURL string) error {
 		return err
 	}
 
-	response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	defer response.Body.Close()
+	if err != nil {
+		log.Printf("%s", err)
+		return err
+	}
+	err = json.Unmarshal(body, order)
+	if err != nil {
+		log.Printf("%s", body)
+		return err
+	}
+
+	w.orders = append(w.orders, order)
 
 	return nil
 }

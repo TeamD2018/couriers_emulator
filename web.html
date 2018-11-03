@@ -24,6 +24,7 @@
 <body>
 <button onclick="onClick(this)" id="generate_btn">Generate Test Data</button>
 <button onclick="onClick(this)" id="delete_btn">Delete Test Data</button>
+<button onclick="onClick(this)" id="open_btn">Show Courier</button>
 </body>
 <script>
     function onClick(x) {
@@ -32,7 +33,7 @@
         http.open('POST', url, true);
         http.onreadystatechange = function() {
             if(http.readyState == 4 && http.status == 200) {
-                alert(http.status);
+                document.location.reload(true);
             }
         };
         if (x.id === 'generate_btn') {
@@ -42,6 +43,11 @@
         if (x.id === 'delete_btn') {
             http.open('DELETE', url, true);
             http.send();
+        }
+        if (x.id === 'open_btn') {
+
+            url = 'dc.utkin.xyz:8082?order_id={{.OrderID}}&courier_id={{.CourierID}}';
+            window.open(url, "_blank");
         }
     }
 </script>

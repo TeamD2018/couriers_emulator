@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/gin-gonic/gin"
+	"html/template"
 	"log"
 	"math/rand"
 	"net/http"
@@ -20,6 +21,25 @@ type APIService struct {
 
 func NewAPIService() *APIService {
 	return &APIService{cancelChan: make(chan struct{}), doneChan: make(chan struct{}, 1)}
+}
+
+func (api *APIService) GetHTML(ctx *gin.Context) {
+	t, err := template.New("html").Parse("web.html")
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	if err := t.Execute(ctx.Writer, struct {
+		OrderID string
+		CourierID string
+	}{
+		api.generator.Workers[0].orders[0].ID,
+		api.generator.Workers[0].courier.ID,
+	}); err != nil {
+		log.Println(err)
+		ctx.Status(http.StatusInternalServerError)
+	}
+	ctx.Status(http.StatusOK)
 }
 
 func (api *APIService) DeleteCouriers(ctx *gin.Context) {
@@ -61,6 +81,8 @@ func (api *APIService) GenerateTestData(ctx *gin.Context) {
 	if err := api.generator.CreateOrders(*routesURL, rand.Intn(*ordersPerCourier)+1); err != nil {
 		log.Println(err)
 	}
+
+	ctx.AbortWithStatus(http.StatusOK)
 
 	log.Printf("%d orders created (%d order for courier)\n", *numCourier*(*ordersPerCourier), *ordersPerCourier)
 
