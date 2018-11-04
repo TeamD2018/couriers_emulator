@@ -58,7 +58,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("%d couriers created!\n", *numCourier)
-	if err := generator.CreateOrders(*routesURL, rand.Intn(*ordersPerCourier)+1); err != nil {
+	if err := generator.CreateOrders(*routesURL, rand.Intn(*ordersPerCourier)); err != nil {
 		panic(err)
 	}
 

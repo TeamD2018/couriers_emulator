@@ -50,7 +50,9 @@ func (g *Generator) DeleteCouriers() error {
 func (g *Generator) UpdateWithInterval(wg *sync.WaitGroup, routeURL string, speed int, interval, throttle time.Duration, ctx context.Context) {
 	for _, w := range g.Workers {
 		wg.Add(1)
-		go w.UpdateLocation(wg, speed, routeURL, interval, ctx)
+		if w.orders != nil {
+			go w.UpdateLocation(wg, speed, routeURL, interval, ctx)
+		}
 		time.Sleep(throttle)
 	}
 }

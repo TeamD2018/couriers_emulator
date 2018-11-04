@@ -86,7 +86,7 @@ func (api *APIService) GenerateTestData(ctx *gin.Context) {
 
 	log.Printf("%d couriers created!\n", *numCourier)
 
-	if err := api.generator.CreateOrders(*routesURL, rand.Intn(*ordersPerCourier)+1); err != nil {
+	if err := api.generator.CreateOrders(*routesURL, rand.Intn(*ordersPerCourier)); err != nil {
 		log.Println(err)
 	}
 
