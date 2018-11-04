@@ -1,0 +1,10 @@
+version: '3.5'
+services:
+  emulator:
+    image: teamd2018/courier_emulator
+    ports:
+    - 2018:2018
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
