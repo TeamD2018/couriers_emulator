@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -29,7 +30,7 @@ func (g *Generator) CreateCouriers() error {
 
 func (g *Generator) CreateOrders(routesURL string, numberOfOrders int) error {
 	for _, w := range g.Workers {
-		for i := 0; i < numberOfOrders; i++ {
+		for i := 0; i < rand.Intn(numberOfOrders); i++ {
 			if err := w.CreateOrder(routesURL); err != nil {
 				return err
 			}
@@ -50,9 +51,7 @@ func (g *Generator) DeleteCouriers() error {
 func (g *Generator) UpdateWithInterval(wg *sync.WaitGroup, routeURL string, speed int, interval, throttle time.Duration, ctx context.Context) {
 	for _, w := range g.Workers {
 		wg.Add(1)
-		if w.orders != nil {
-			go w.UpdateLocation(wg, speed, routeURL, interval, ctx)
-		}
+		go w.UpdateLocation(wg, speed, routeURL, interval, ctx)
 		time.Sleep(throttle)
 	}
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"html/template"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"sync"
@@ -86,7 +85,7 @@ func (api *APIService) GenerateTestData(ctx *gin.Context) {
 
 	log.Printf("%d couriers created!\n", *numCourier)
 
-	if err := api.generator.CreateOrders(*routesURL, rand.Intn(*ordersPerCourier)); err != nil {
+	if err := api.generator.CreateOrders(*routesURL, *ordersPerCourier); err != nil {
 		log.Println(err)
 	}
 

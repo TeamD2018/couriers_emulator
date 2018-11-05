@@ -235,6 +235,10 @@ func (w *Worker) buildURLCreateOrder(base string) string {
 	return fmt.Sprintf("%s/couriers/%s/orders", base, w.courier.ID)
 }
 
+func (w *Worker) buildURLUpdateOrder(base string, orderID string) string {
+	return fmt.Sprintf("%s/couriers/%s/orders/%s", base, w.courier.ID, orderID)
+}
+
 func (w *Worker) buildURLUpdate(base string) string {
 	return fmt.Sprintf("%s%s%s", base, "/couriers/", w.courier.ID)
 }
@@ -257,14 +261,19 @@ func (w *Worker) buildURLDelete(base string) string {
 }
 
 func (w *Worker) getRoute(routesURL string) error {
-	locations := make([]*Location, len(w.orders)+1)
-	locations[0] = &w.orders[0].Source
-	for i, o := range w.orders {
-		locations[i+1] = &o.Destination
+	locations := make([]*Location, 0)
+	if w.orders == nil {
+		locations = append(locations, w.getRandomLocation(moscowMinLat, moscowMaxLat, moscowMinLon, moscowMaxLon))
+		locations = append(locations, w.getRandomLocation(moscowMinLat, moscowMaxLat, moscowMinLon, moscowMaxLon))
+	} else {
+		locations = append(locations, &w.orders[0].Source)
+		for _, o := range w.orders {
+			locations = append(locations, &o.Destination)
+		}
 	}
 	buildStr := w.buildURLGetRoute(routesURL, locations)
 
-	fmt.Println(buildStr)
+	log.Println(buildStr)
 
 	response, err := http.Get(buildStr)
 
@@ -302,7 +311,9 @@ func (w *Worker) UpdateLocation(wg *sync.WaitGroup, speed int, routesURL string,
 	defer wg.Done()
 	timer := time.NewTimer(time.Millisecond)
 	for {
-		if w.idur == len(w.durations)-1 {
+		if w.idur == len(w.durations) {
+			log.Println("sending cancel orders...")
+			w.SendCancelOrder()
 			return
 		}
 		select {
@@ -346,6 +357,29 @@ func (w *Worker) getRandomLocation(minLat, maxLat, minLon, maxLon float64) *Loca
 		Lat: trim(minLat+rand.Float64()*(maxLat-minLat), 4),
 		Lon: trim(minLon+rand.Float64()*(maxLon-minLon), 4),
 	}}
+}
+
+func (w *Worker) SendCancelOrder() {
+	for _, o := range w.orders {
+		url := w.buildURLUpdateOrder(w.URL, o.ID)
+		bodyStruct := struct {
+			DeliveredAt int64 `json:"delivered_at"`
+		}{
+			time.Now().Unix(),
+		}
+		body, _ := json.Marshal(bodyStruct)
+		if req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(body)); err != nil {
+			log.Println(err)
+		} else {
+			if resp, err := w.client.Do(req); err != nil {
+				log.Println(err)
+			} else {
+				if resp.StatusCode != http.StatusOK {
+					log.Printf("error: expected %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+			}
+		}
+	}
 }
 
 func round(num float64) int {
