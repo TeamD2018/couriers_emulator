@@ -40,8 +40,8 @@ func (api *APIService) GetHTML(ctx *gin.Context) {
 	} else {
 		for i := 0; i < len(api.generator.Workers); i++ {
 			if api.generator.Workers[i].orders != nil {
-				r.OrderID = api.generator.Workers[0].orders[0].ID
-				r.CourierID = api.generator.Workers[0].courier.ID
+				r.OrderID = api.generator.Workers[i].orders[0].ID
+				r.CourierID = api.generator.Workers[i].courier.ID
 				break
 			}
 		}
