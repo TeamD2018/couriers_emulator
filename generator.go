@@ -25,6 +25,7 @@ func (g *Generator) CreateCouriers() error {
 			return err
 		}
 	}
+	CourI = 0
 	return nil
 }
 
@@ -36,6 +37,7 @@ func (g *Generator) CreateOrders(routesURL string, numberOfOrders int) error {
 			}
 		}
 	}
+	AddrI = 0
 	return nil
 }
 

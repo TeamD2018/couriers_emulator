@@ -67,8 +67,8 @@ var ConstantCouriers = []Courier{
 }
 
 var (
-	addrI = 0
-	courI = 0
+	AddrI = 0
+	CourI = 0
 )
 
 type Geometry struct {
@@ -123,9 +123,9 @@ func (w *Worker) CreateCourier() error {
 	name := fake.FullName()
 	phone := fake.Phone()
 	var courier Courier
-	if courI < len(ConstantCouriers) {
-		courier = ConstantCouriers[courI]
-		courI++
+	if CourI < len(ConstantCouriers) {
+		courier = ConstantCouriers[CourI]
+		CourI++
 	} else {
 		courier = Courier{
 			Name:  name,
@@ -158,14 +158,14 @@ func (w *Worker) CreateOrder(routesURL string) error {
 
 	order := &Order{}
 	order.OrderNumber = rand.Int() % 10000
-	if addrI < len(ConstantAddresses) {
+	if AddrI < len(ConstantAddresses) {
 		order.Destination = Location{
 			Point: &GeoPoint{
-				Lat: ConstantAddresses[addrI].Point.Lat,
-				Lon: ConstantAddresses[addrI].Point.Lon,
+				Lat: ConstantAddresses[AddrI].Point.Lat,
+				Lon: ConstantAddresses[AddrI].Point.Lon,
 			},
 		}
-		addrI++
+		AddrI++
 	} else {
 		order.Destination = Location{
 			Point: &GeoPoint{
