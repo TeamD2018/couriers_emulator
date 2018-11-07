@@ -31,7 +31,7 @@ func (g *Generator) CreateCouriers() error {
 
 func (g *Generator) CreateOrders(routesURL string, numberOfOrders int) error {
 	for _, w := range g.Workers {
-		for i := 0; i < rand.Intn(numberOfOrders) + 1; i++ {
+		for i := 0; i < rand.Intn(numberOfOrders); i++ {
 			if err := w.CreateOrder(routesURL); err != nil {
 				return err
 			}
