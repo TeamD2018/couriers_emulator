@@ -300,8 +300,10 @@ func (w *Worker) getRoute(routesURL string) error {
 		w.locations = append(w.locations, &point)
 	}
 
-	for _, r := range resp.Routes[0].Legs[0].Annotation.Duration {
-		w.durations = append(w.durations, r)
+	for _, l := range resp.Routes[0].Legs {
+		for _, r := range l.Annotation.Duration {
+			w.durations = append(w.durations, r)
+		}
 	}
 	return nil
 }
